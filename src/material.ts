@@ -1,13 +1,14 @@
-import { gl } from "./main";
 import { hashCode } from "./utils";
 
 export class Material{
+    private gl: WebGLRenderingContext | WebGL2RenderingContext;
     vertexShader: WebGLShader;
     fragmentShaderSource: string;
     programs: { [hash: number]: WebGLProgram | undefined};
     activeProgram: WebGLProgram | null;
     uniforms: Map<string, WebGLUniformLocation | null>;
-    constructor (vertexShader: WebGLShader, fragmentShaderSource: string) {
+    constructor (gl: WebGLRenderingContext | WebGL2RenderingContext, vertexShader: WebGLShader, fragmentShaderSource: string) {
+        this.gl = gl;
         this.vertexShader = vertexShader;
         this.fragmentShaderSource = fragmentShaderSource;
         this.programs = {};
@@ -23,24 +24,24 @@ export class Material{
         let program = this.programs[hash];
         if (program == null)
         {
-            let fragmentShader = compileShader(gl.FRAGMENT_SHADER, this.fragmentShaderSource, keywords);
-            program = createProgram(this.vertexShader, fragmentShader);
+            let fragmentShader = compileShader(this.gl, this.gl.FRAGMENT_SHADER, this.fragmentShaderSource, keywords);
+            program = createProgram(this.gl, this.vertexShader, fragmentShader);
             this.programs[hash] = program;
         }
 
         if (program == this.activeProgram) return;
 
-        this.uniforms = getUniforms(program);
+        this.uniforms = getUniforms(this.gl, program);
         this.activeProgram = program;
     }
 
     bind () {
         if (!this.activeProgram) return; 
-        gl.useProgram(this.activeProgram);
+        this.gl.useProgram(this.activeProgram);
     }
 }
 
-export function getUniforms (program: WebGLProgram): Map<string, WebGLUniformLocation | null> {
+export function getUniforms (gl: WebGLRenderingContext | WebGL2RenderingContext,program: WebGLProgram): Map<string, WebGLUniformLocation | null> {
     let uniforms: Map<string, WebGLUniformLocation | null> = new Map();
     let uniformCount = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS);
     for (let i = 0; i < uniformCount; i++) {
@@ -52,7 +53,7 @@ export function getUniforms (program: WebGLProgram): Map<string, WebGLUniformLoc
     return uniforms;
 }
 
-export function createProgram (vertexShader: WebGLShader, fragmentShader: WebGLShader) {
+export function createProgram (gl: WebGLRenderingContext | WebGL2RenderingContext,vertexShader: WebGLShader, fragmentShader: WebGLShader) {
     let program = gl.createProgram();
     if (!program) {
         throw new Error("WebGLProgram を作成できませんでした");
@@ -68,7 +69,7 @@ export function createProgram (vertexShader: WebGLShader, fragmentShader: WebGLS
     return program;
 }
 
-export function compileShader (type: number, source: string , keywords?: string[] | null) {
+export function compileShader (gl: WebGLRenderingContext | WebGL2RenderingContext,type: number, source: string , keywords?: string[] | null) {
 
     source = addKeywords(source, keywords);
 

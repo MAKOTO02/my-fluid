@@ -1,5 +1,8 @@
-import { type RGB } from "./main";
-
+export type RGB = {
+  r: number,
+  g: number,
+  b:number,
+}
 export class Pointer {
   id: number;
   texcoordX: number;

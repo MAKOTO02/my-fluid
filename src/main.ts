@@ -3,7 +3,7 @@ import { Program } from "./program";
 import { Material } from "./material";
 import { compileShader } from "./material";
 import { loadShaderSource } from "./shaderLoader";
-import { Pointer } from "./pointer";
+import { Pointer, type RGB } from "./pointer";
 
 // ------- グローバル状態 -------
 const canvas = document.getElementById("canvas") as HTMLCanvasElement | null;
@@ -27,20 +27,21 @@ let config = {
     SPLAT_FORCE: 5000,
     TRANSPARENT: false,
     BACK_COLOR: { r: 0, g: 0, b: 0 },
+    GRAVITY: 15,
 }
 
 
-let baseVertexShader = compileShader(gl.VERTEX_SHADER, loadShaderSource("baseVert"));
-let copyShader = compileShader(gl.FRAGMENT_SHADER, loadShaderSource("copy"));
-let clearShader = compileShader(gl.FRAGMENT_SHADER, loadShaderSource("clear"));
-let splatShader = compileShader(gl.FRAGMENT_SHADER, loadShaderSource("splat"));
-let colorShader = compileShader(gl.FRAGMENT_SHADER, loadShaderSource("color"));
-let advectionShader = compileShader(gl.FRAGMENT_SHADER, loadShaderSource("advection"), ext.supportLinearFiltering ? null : ["MANUAL_FILTERING"]);
-let divergenceShader = compileShader(gl.FRAGMENT_SHADER, loadShaderSource("divergence"));
-let curlShader = compileShader(gl.FRAGMENT_SHADER, loadShaderSource("curl"));
-let vorticityShader = compileShader(gl.FRAGMENT_SHADER, loadShaderSource("vorticity"));
-let pressureShader = compileShader(gl.FRAGMENT_SHADER, loadShaderSource("pressure"));
-let gradientSubtractShader = compileShader(gl.FRAGMENT_SHADER, loadShaderSource("gradientSubtract"));
+let baseVertexShader = compileShader(gl, gl.VERTEX_SHADER, loadShaderSource("baseVert"));
+let copyShader = compileShader(gl, gl.FRAGMENT_SHADER, loadShaderSource("copy"));
+let clearShader = compileShader(gl, gl.FRAGMENT_SHADER, loadShaderSource("clear"));
+let splatShader = compileShader(gl, gl.FRAGMENT_SHADER, loadShaderSource("splat"));
+let colorShader = compileShader(gl, gl.FRAGMENT_SHADER, loadShaderSource("color"));
+let advectionShader = compileShader(gl, gl.FRAGMENT_SHADER, loadShaderSource("advection"), ext.supportLinearFiltering ? null : ["MANUAL_FILTERING"]);
+let divergenceShader = compileShader(gl, gl.FRAGMENT_SHADER, loadShaderSource("divergence"));
+let curlShader = compileShader(gl, gl.FRAGMENT_SHADER, loadShaderSource("curl"));
+let vorticityShader = compileShader(gl, gl.FRAGMENT_SHADER, loadShaderSource("vorticity"));
+let pressureShader = compileShader(gl, gl.FRAGMENT_SHADER, loadShaderSource("pressure"));
+let gradientSubtractShader = compileShader(gl, gl.FRAGMENT_SHADER, loadShaderSource("gradientSubtract"));
 
 let dye: DoubleFBO;
 let velocity: DoubleFBO;
@@ -49,26 +50,28 @@ let curl: FBO;
 let pressure: DoubleFBO;
 
 // 追加.
-let noiseShader = compileShader(gl.FRAGMENT_SHADER, loadShaderSource("noise"));;
-let noiseProgram = new Program(baseVertexShader, noiseShader);
+let noiseShader = compileShader(gl, gl.FRAGMENT_SHADER, loadShaderSource("noise"));;
+let noiseProgram = new Program(gl, baseVertexShader, noiseShader);
 let noise: FBO;
-let curlNoiseshader = compileShader(gl.FRAGMENT_SHADER, loadShaderSource("curlNoise"));
-let curlNoiseProgram = new Program(baseVertexShader, curlNoiseshader);
+let curlNoiseshader = compileShader(gl, gl.FRAGMENT_SHADER, loadShaderSource("curlNoise"));
+let curlNoiseProgram = new Program(gl, baseVertexShader, curlNoiseshader);
 let curlNoise: FBO;
+let physicsShader = compileShader(gl, gl.FRAGMENT_SHADER, loadShaderSource("physics"));
+let physicsProgram = new Program(gl, baseVertexShader, physicsShader);
 
-const copyProgram  = new Program(baseVertexShader, copyShader);
-const clearProgram = new Program(baseVertexShader, clearShader);
-const splatProgram = new Program(baseVertexShader, splatShader);
-const colorProgram = new Program(baseVertexShader, colorShader);
+const copyProgram  = new Program(gl, baseVertexShader, copyShader);
+const clearProgram = new Program(gl, baseVertexShader, clearShader);
+const splatProgram = new Program(gl, baseVertexShader, splatShader);
+const colorProgram = new Program(gl, baseVertexShader, colorShader);
 
-let curlProgram = new Program(baseVertexShader, curlShader);
-let vorticityProgram = new Program(baseVertexShader, vorticityShader);
-let divergenceProgram = new Program(baseVertexShader, divergenceShader);
-let pressureProgram = new Program(baseVertexShader, pressureShader);
-let gradienSubtractProgram = new Program(baseVertexShader, gradientSubtractShader);
-let advectionProgram = new Program(baseVertexShader, advectionShader);
+let curlProgram = new Program(gl, baseVertexShader, curlShader);
+let vorticityProgram = new Program(gl, baseVertexShader, vorticityShader);
+let divergenceProgram = new Program(gl, baseVertexShader, divergenceShader);
+let pressureProgram = new Program(gl, baseVertexShader, pressureShader);
+let gradienSubtractProgram = new Program(gl, baseVertexShader, gradientSubtractShader);
+let advectionProgram = new Program(gl, baseVertexShader, advectionShader);
 
-const displayMaterial = new Material(baseVertexShader, loadShaderSource("display"));
+const displayMaterial = new Material(gl, baseVertexShader, loadShaderSource("display"));
 displayMaterial.setKeywords([]);
 
 // ------- ユーティリティ -------
@@ -366,11 +369,7 @@ function correctRadius (radius: number) {
     return radius;
 }
 
-export type RGB = {
-  r: number,
-  g: number,
-  b:number,
-}
+
 
 function generateColor (): RGB {
     let c = HSVtoRGB(Math.random(), 1.0, 1.0);
@@ -463,6 +462,21 @@ function step(dt: number){
     gl.uniform1f(locDt, dt);
     gl.uniform1i(locuNoise, noise.attach(2));
     gl.uniform1f(locTime, lastUpdateTime * 0.001);
+    blit(velocity.write);
+    velocity.swap();
+
+    physicsProgram.bind();
+    locuVelocity = physicsProgram.uniforms.get("uVelocity");
+    let locGravity  = physicsProgram.uniforms.get("uGravity");
+    locDt       = physicsProgram.uniforms.get("dt");
+    if (locuVelocity === undefined || locGravity === undefined || locDt === undefined) {
+      throw new Error("physicsProgram が不正です");
+    }
+    gl.uniform1i(locuVelocity, velocity.read.attach(0));
+    // 下向き重力（座標系に合わせて符号は調整）:
+    gl.uniform2f(locGravity, 0.0, -config.GRAVITY); 
+    gl.uniform1f(locDt, dt);
+
     blit(velocity.write);
     velocity.swap();
 

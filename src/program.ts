@@ -1,17 +1,18 @@
 import { createProgram, getUniforms } from "./material";
-import { gl } from "./main";
 
 export class Program {
+    private gl: WebGLRenderingContext | WebGL2RenderingContext;
     uniforms: Map<string, WebGLUniformLocation | null>;
     program: WebGLProgram;
 
-    constructor (vertexShader: WebGLShader, fragmentShader: WebGLShader) {
+    constructor (gl: WebGLRenderingContext | WebGL2RenderingContext, vertexShader: WebGLShader, fragmentShader: WebGLShader) {
+        this.gl = gl;
         this.uniforms = new Map();
-        this.program = createProgram(vertexShader, fragmentShader);
-        this.uniforms = getUniforms(this.program);
+        this.program = createProgram(gl, vertexShader, fragmentShader);
+        this.uniforms = getUniforms(gl, this.program);
     }
 
     bind () {
-        gl.useProgram(this.program);
+        this.gl.useProgram(this.program);
     }
 }
