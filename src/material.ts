@@ -1,5 +1,5 @@
 import { gl } from "./main";
-import { hashCode } from "./Utils";
+import { hashCode } from "./utils";
 
 export class Material{
     vertexShader: WebGLShader;

@@ -1,5 +1,5 @@
 import { getWebGLContext} from "./glContext"; // さっき作ったやつを想定
-import { Program } from "./Program";
+import { Program } from "./program";
 import { Material } from "./material";
 import { compileShader } from "./material";
 import { loadShaderSource } from "./shaderLoader";
@@ -12,7 +12,6 @@ if (!canvas) {
 }
 export const { gl, ext } = getWebGLContext(canvas);
 let lastUpdateTime = performance.now();
-let colorUpdateTimer = 0;
 
 let config = {
     SIM_RESOLUTION: 256,
@@ -529,12 +528,12 @@ function step(dt: number){
       throw new Error("advectionProgram が不正です.");
     }
     // dyeTexelSize だけは「MANUAL_FILTERING のときだけ存在していれば良い」
-    if (!ext.supportLinearFiltering && !locDyeTexelSize) {
+    if (!ext.supportLinearFiltering && locDyeTexelSize === undefined) {
       throw new Error("dyeTexelSize uniform が見つかりません（MANUAL_FILTERING 有効時）");
     }
     gl.uniform2f(locTexelSize, velocity.texelSizeX, velocity.texelSizeY);
     if (!ext.supportLinearFiltering)
-        gl.uniform2f(locDyeTexelSize, velocity.texelSizeX, velocity.texelSizeY);
+        gl.uniform2f(locDyeTexelSize as WebGLUniformLocation, velocity.texelSizeX, velocity.texelSizeY);
     let velocityId = velocity.read.attach(0);
     gl.uniform1i(locuVelocity, velocityId);
     gl.uniform1i(locuSource, velocityId);
@@ -544,7 +543,7 @@ function step(dt: number){
     velocity.swap();
 
     if (!ext.supportLinearFiltering)
-        gl.uniform2f(locDyeTexelSize, dye.texelSizeX, dye.texelSizeY);
+        gl.uniform2f(locDyeTexelSize as WebGLUniformLocation, dye.texelSizeX, dye.texelSizeY);
     gl.uniform1i(locuVelocity, velocity.read.attach(0));
     gl.uniform1i(locuSource, dye.read.attach(1));
     gl.uniform1f(locDissipation, config.DENSITY_DISSIPATION);
@@ -552,7 +551,7 @@ function step(dt: number){
     dye.swap();
 }
 
-function render(target){
+function render(target: FBO | null){
   if (target == null || !config.TRANSPARENT) {
         gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
         gl.enable(gl.BLEND);
@@ -565,7 +564,7 @@ function render(target){
         drawColor(target, normalizeColor(config.BACK_COLOR));
     drawDisplay(target);
 }
-function drawDisplay (target) {
+function drawDisplay (target: FBO | null) {
     displayMaterial.bind();
     let locuTexture = displayMaterial.uniforms.get("uTexture");
     if(locuTexture === undefined) throw new Error("displayShader が不正です.")
@@ -573,7 +572,7 @@ function drawDisplay (target) {
     blit(target);
 }
 
-function drawColor (target, color: RGB) {
+function drawColor (target: FBO | null, color: RGB) {
     colorProgram.bind();
     let locColor = colorProgram.uniforms.get("color");
     if(locColor == undefined)
@@ -598,7 +597,7 @@ const blit = (() => {
     gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(0);
 
-    return (target, clear = false) => {
+    return (target: FBO | null, clear = false) => {
         if (target == null)
         {
             gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
@@ -693,6 +692,8 @@ window.addEventListener('keydown', e => {
 });
 
 function updatePointerDownData (pointer: Pointer, id: number, posX: number, posY: number) {
+    if(!canvas)
+      throw new Error("canvas が見つかりません.")
     pointer.id = id;
     pointer.down = true;
     pointer.moved = false;
@@ -706,6 +707,8 @@ function updatePointerDownData (pointer: Pointer, id: number, posX: number, posY
 }
 
 function updatePointerMoveData (pointer: Pointer, posX: number, posY: number) {
+  if(!canvas)
+      throw new Error("canvas が見つかりません.")
     pointer.prevTexcoordX = pointer.texcoordX;
     pointer.prevTexcoordY = pointer.texcoordY;
     pointer.texcoordX = posX / canvas.width;
@@ -720,12 +723,16 @@ function updatePointerUpData (pointer: Pointer) {
 }
 
 function correctDeltaX (delta: number) {
+  if(!canvas)
+      throw new Error("canvas が見つかりません.")
     let aspectRatio = canvas.width / canvas.height;
     if (aspectRatio < 1) delta *= aspectRatio;
     return delta;
 }
 
 function correctDeltaY (delta: number) {
+  if(!canvas)
+      throw new Error("canvas が見つかりません.")
     let aspectRatio = canvas.width / canvas.height;
     if (aspectRatio > 1) delta /= aspectRatio;
     return delta;
