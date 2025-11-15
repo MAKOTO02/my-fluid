@@ -698,6 +698,8 @@ window.addEventListener("load", () => {
 
   console.log("WebGL context:", gl, ext);
 });
+window.addEventListener('resize', resizeCanvas);
+window.addEventListener('orientationchange', resizeCanvas);
 
 canvas.addEventListener('mousedown', e => {
     let posX = scaleByPixelRatio(e.offsetX);
