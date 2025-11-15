@@ -13,6 +13,7 @@ import vorticity from "./shaders/vorticityShader.frag?raw";
 import pressure from "./shaders/pressureShader.frag?raw";
 import gradientSubtract from "./shaders/gradientSubtractShader.frag?raw";
 import display from "./shaders/displayShader.frag?raw";
+import displayVertex from "./shaders/displayVertexShader.vert?raw";
 
 import noise from "./shaders/noiseShader.frag?raw";
 import curlNoise from "./shaders/curlNoise.frag?raw";
@@ -20,6 +21,8 @@ import physics from "./shaders/physicsShader.frag?raw";
 
 import sceneVert from "./shaders/sceneVertexShader.vert?raw";
 import scene from "./shaders/sceneShader.frag?raw";
+
+
 // 他のシェーダーも同様に import
 
 // 名前 → ソースコード のマップ
@@ -36,6 +39,7 @@ const SHADERS = {
     pressure,
     gradientSubtract,
     display,
+    displayVertex,
     noise,
     curlNoise,
     physics,

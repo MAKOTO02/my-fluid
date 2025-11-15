@@ -54,4 +54,13 @@ export class Transform {
   getMatrix(): mat4 {
     return this.updateMatrix();
   }
+
+  markDirty(){
+    this._dirty = true;
+  }
+
+  setPosition(pos: vec3){
+    vec3.copy(this.position, pos);
+    this._dirty = true;
+  }
 }

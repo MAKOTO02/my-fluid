@@ -2,16 +2,20 @@
 import type { Program } from "./program";
 import type { Camera } from "./camera";
 import type { Mesh } from "./mesh";   // Mesh2D を 3D に拡張した版を想定
+import type { InputSystem } from "./inputSystem";
 
 export class Scene {
   private program: Program;
   private camera: Camera | null = null;
   private objects: Mesh[] = [];
+  private input?: InputSystem;
 
   constructor(
-    program: Program
+    program: Program,
+    input?: InputSystem
   ) {
     this.program = program;
+    this.input = input;
   }
 
   setCamera(camera: Camera) {
@@ -25,10 +29,10 @@ export class Scene {
     this.objects.push(obj);
   }
 
-  update(dt: number) {
+  public update(dt: number) {
     // カメラ側でアニメーションさせる場合はここで更新しても良い
     if (this.camera) {
-      this.camera.update(dt);
+      this.camera.update(dt, this.input);
     }
     // オブジェクトごとに動かしたい場合
     for (const obj of this.objects) {

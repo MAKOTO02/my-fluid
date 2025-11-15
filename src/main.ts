@@ -8,6 +8,7 @@ import { Scene } from "./scene";
 import { Quad } from "./mesh";
 import { Camera } from "./camera";
 import { vec3 } from "gl-matrix";
+import { InputSystem } from "./inputSystem";
 
 // ------- グローバル状態 -------
 const canvas = document.getElementById("canvas") as HTMLCanvasElement | null;
@@ -79,9 +80,13 @@ let advectionProgram = new Program(gl, baseVertexShader, advectionShader);
 let sceneVertexShader = compileShader(gl, gl.VERTEX_SHADER, loadShaderSource("sceneVert"));
 let sceneShader = compileShader(gl, gl.FRAGMENT_SHADER, loadShaderSource("scene"));
 let sceneProgram = new Program(gl, sceneVertexShader, sceneShader);
-let scene = new Scene(sceneProgram);
+let input = new InputSystem(canvas);
+let scene = new Scene(sceneProgram, input);
 let quad = new Quad(gl);
+let quad2 = new Quad(gl);
+quad2.transform.translate(vec3.fromValues(2.0,0.0,0.0));
 scene.addObject(quad);
+scene.addObject(quad2);
 if(!canvas)
   throw new Error("canvas が見つかりせん.");
 let aspect = canvas.width / canvas.height
@@ -112,8 +117,8 @@ function renderSceneToFBO() {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 }
 
-
-const displayMaterial = new Material(gl, baseVertexShader, loadShaderSource("display"));
+const displayVertexShader = compileShader(gl, gl.VERTEX_SHADER, loadShaderSource("displayVertex"));
+const displayMaterial = new Material(gl, displayVertexShader, loadShaderSource("display"));
 displayMaterial.setKeywords([]);
 
 // ------- ユーティリティ -------
@@ -448,19 +453,22 @@ function HSVtoRGB (h: number, s: number, v: number): RGB {
     };
 }
 
-function step(dt: number){
-    gl.disable(gl.BLEND);
-
+function sceneFlow(dt: number){
     // scene描画を追加.
     camera.setAspect(sceneFBO.width / sceneFBO.height);
+    input?.resetMouseDelta();
+    input?.resetScroll();
+    scene.update(dt);
     renderSceneToFBO();
+}
 
-    function bindObstacle(program: Program) {
-      const loc = program.uniforms.get("uObstacle");
-      if (!loc) return; // そのシェーダが uObstacle を使ってないなら何もしない
-      gl.uniform1i(loc, sceneFBO.attach(3)); // 例: テクスチャユニット3
-    }
+function bindObstacle(program: Program) {
+    const loc = program.uniforms.get("uObstacle");
+    if (!loc) return; // そのシェーダが uObstacle を使ってないなら何もしない
+    gl.uniform1i(loc, sceneFBO.attach(3)); // 例: テクスチャユニット3
+}
 
+function fluidFlow(dt: number){
     noiseProgram.bind();
     let locTexelSize = noiseProgram.uniforms.get("texelSize");
     let locuTime = noiseProgram.uniforms.get("uTime");
@@ -619,6 +627,12 @@ function step(dt: number){
     blit(dye.write);
     dye.swap();
 }
+function step(dt: number){
+    gl.disable(gl.BLEND);
+
+    sceneFlow(dt);
+    fluidFlow(dt);
+}
 
 function render(target: FBO | null){
   if (target == null || !config.TRANSPARENT) {
@@ -636,8 +650,12 @@ function render(target: FBO | null){
 function drawDisplay (target: FBO | null) {
     displayMaterial.bind();
     let locuTexture = displayMaterial.uniforms.get("uTexture");
-    if(locuTexture === undefined) throw new Error("displayShader が不正です.")
+    let locOffset = displayMaterial.uniforms.get("uOffset");
+    let locScale = displayMaterial.uniforms.get("uScale");
+    if(!locuTexture || !locOffset || !locScale) throw new Error("displayShader が不正です.")
     gl.uniform1i(locuTexture, dye.read.attach(0));
+    gl.uniform2f(locOffset, 0, 0);
+    gl.uniform1f(locScale, 1);
     //gl.uniform1i(locuTexture, sceneFBO.attach(0));
     blit(target);
 }
