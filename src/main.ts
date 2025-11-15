@@ -14,6 +14,7 @@ const canvas = document.getElementById("canvas") as HTMLCanvasElement | null;
 if (!canvas) {
   throw new Error("canvas が見つかりません");
 }
+resizeCanvas();
 export const { gl, ext } = getWebGLContext(canvas);
 let lastUpdateTime = performance.now();
 
