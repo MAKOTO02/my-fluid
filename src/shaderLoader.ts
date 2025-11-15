@@ -17,6 +17,9 @@ import display from "./shaders/displayShader.frag?raw";
 import noise from "./shaders/noiseShader.frag?raw";
 import curlNoise from "./shaders/curlNoise.frag?raw";
 import physics from "./shaders/physicsShader.frag?raw";
+
+import sceneVert from "./shaders/sceneVertexShader.vert?raw";
+import scene from "./shaders/sceneShader.frag?raw";
 // 他のシェーダーも同様に import
 
 // 名前 → ソースコード のマップ
@@ -35,7 +38,9 @@ const SHADERS = {
     display,
     noise,
     curlNoise,
-    physics
+    physics,
+    sceneVert,
+    scene
 } as const;
 
 export type ShaderName = keyof typeof SHADERS;
