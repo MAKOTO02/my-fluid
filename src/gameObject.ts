@@ -37,5 +37,5 @@ export class GameObject {
   draw(){}
   init(){}
 
-  setProgram(program: Program){}
+  setProgram(_program: Program){}
 }

@@ -91,8 +91,8 @@ let camera = new Camera(
 scene.setCamera(camera);
 let player = new SplatPointerObject(canvas);
 scene.addObject(player);
-let offset = vec3.subtract(vec3.create(), camera.transform.position, player.transform.position);
-let followController = new FollowController(camera, player, offset);
+//let offset = vec3.subtract(vec3.create(), camera.transform.position, player.transform.position);
+//let followController = new FollowController(camera, player, offset);
 
 // fluid 面のワールド座標範囲をどこかで定義しておく
 
