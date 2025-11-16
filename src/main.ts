@@ -10,7 +10,7 @@ import { Camera } from "./camera";
 import { vec3 } from "gl-matrix";
 import { InputSystem } from "./inputSystem";
 import { SplatPointerObject } from "./splatPointerObject";
-import { FollowController } from "./followController";
+//import { FollowController } from "./followController";
 import { config } from "./config";
 
 // ------- グローバル状態 -------
@@ -340,6 +340,7 @@ function update (now:number) {
 let pointers: Pointer[] = [];
 pointers.push(new Pointer());
 pointers.push(player.pointer);
+
 let splatStack: number[] = [];
 function applyInputs(){
   if (splatStack.length > 0)
@@ -749,20 +750,22 @@ window.addEventListener('mouseup', () => {
 canvas.addEventListener('touchstart', e => {
     e.preventDefault();
     const touches = e.targetTouches;
-    while (touches.length >= pointers.length)
+    const baseIndex = 2;
+    while (touches.length + baseIndex > pointers.length)
         pointers.push(new Pointer());
     for (let i = 0; i < touches.length; i++) {
         let posX = scaleByPixelRatio(touches[i].pageX);
         let posY = scaleByPixelRatio(touches[i].pageY);
-        updatePointerDownData(pointers[i + 1], touches[i].identifier, posX, posY);
+        updatePointerDownData(pointers[i + baseIndex], touches[i].identifier, posX, posY);
     }
 });
 
 canvas.addEventListener('touchmove', e => {
     e.preventDefault();
+    const baseIndex = 2;
     const touches = e.targetTouches;
     for (let i = 0; i < touches.length; i++) {
-        let pointer = pointers[i + 1];
+        let pointer = pointers[i + baseIndex];
         if (!pointer.down) continue;
         let posX = scaleByPixelRatio(touches[i].pageX);
         let posY = scaleByPixelRatio(touches[i].pageY);
