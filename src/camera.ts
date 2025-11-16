@@ -1,7 +1,6 @@
 import { vec3, mat4, quat } from "gl-matrix";
 import type { Program } from "./program";
 import { GameObject } from "./gameObject";
-import type { InputSystem } from "./inputSystem";
 
 export class Camera extends GameObject {
   private fov: number;
@@ -108,20 +107,7 @@ export class Camera extends GameObject {
     this.gl.uniformMatrix4fv(locProj, false, this.projectionMatrix);
   }
 
-  public update(dt: number, input?: InputSystem){
-    if (input) {
-        const force = vec3.create();
-        const base = 20.0;
-
-        if (input.isKeyDown("w")) force[1] += base;
-        if (input.isKeyDown("s")) force[1] -= base;
-        if (input.isKeyDown("a")) force[0] -= base;
-        if (input.isKeyDown("d")) force[0] += base;
-
-        if (force[0] || force[1] || force[2]) {
-            this.rigidBody?.addForce(force);
-        }
-    }
+  public override update(dt: number){
     super.update(dt);
     this.dt = dt;
     this.updateMatrices();

@@ -1,5 +1,7 @@
 import { Transform } from "./transform";
 import { RigidBody } from "./rigidBody";
+import { Program } from "./program";
+import type { InputSystem } from "./inputSystem";
 
 export class GameObject {
   transform: Transform;
@@ -10,12 +12,12 @@ export class GameObject {
   }
 
   /** このオブジェクトを物理オブジェクトにする */
-  addRigidBody(mass = 1.0, damping = 3.0): RigidBody {
+  addRigidBody(mass = 1.0, dragK = 3.0): RigidBody {
     if (!this.rigidBody) {
       this.rigidBody = new RigidBody(this.transform);
     }
     this.rigidBody.mass = mass;
-    this.rigidBody.damping = damping;
+    this.rigidBody.dragK = dragK;
     return this.rigidBody;
   }
 
@@ -27,8 +29,13 @@ export class GameObject {
   }
 
   /** ロジック更新用。継承先で override してもOK */
-  update(dt: number) {
+  update(dt: number, _input?: InputSystem) {
     // デフォルトでは物理だけ更新
     this.updatePhysics(dt);
   }
+
+  draw(){}
+  init(){}
+
+  setProgram(program: Program){}
 }

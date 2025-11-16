@@ -35,7 +35,7 @@ export class Mesh extends GameObject {
     this.program = program;
   }
 
-  public init() {
+  public override init() {
     if(!this.program) return;
     const gl = this.gl as WebGL2RenderingContext;
 
@@ -131,7 +131,7 @@ export class Mesh extends GameObject {
   }
 
   /** 描画 */
-  draw() {
+  override draw() {
     const gl = this.gl as WebGL2RenderingContext;
     if (!this.vao) return;
 

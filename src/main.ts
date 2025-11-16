@@ -9,6 +9,9 @@ import { Quad } from "./mesh";
 import { Camera } from "./camera";
 import { vec3 } from "gl-matrix";
 import { InputSystem } from "./inputSystem";
+import { SplatPointerObject } from "./splatPointerObject";
+import { FollowController } from "./followController";
+import { config } from "./config";
 
 // ------- グローバル状態 -------
 const canvas = document.getElementById("canvas") as HTMLCanvasElement | null;
@@ -19,22 +22,6 @@ resizeCanvas();
 export const { gl, ext } = getWebGLContext(canvas);
 let lastUpdateTime = performance.now();
 
-let config = {
-    SIM_RESOLUTION: 256,
-    DYE_RESOLUTION: 1024,
-    DENSITY_DISSIPATION: 1,
-    VELOCITY_DISSIPATION: 0.2,
-    PRESSURE: 0.8,
-    PRESSURE_ITERATIONS: 20,
-    CURL: 30,
-    COLOR_UPDATE_SPEED: 10,
-    PAUSED: false,
-    SPLAT_RADIUS: 0.25,
-    SPLAT_FORCE: 5000,
-    TRANSPARENT: false,
-    BACK_COLOR: { r: 0, g: 0, b: 0 },
-    GRAVITY: 15,
-}
 
 
 let baseVertexShader = compileShader(gl, gl.VERTEX_SHADER, loadShaderSource("baseVert"));
@@ -81,6 +68,7 @@ let sceneVertexShader = compileShader(gl, gl.VERTEX_SHADER, loadShaderSource("sc
 let sceneShader = compileShader(gl, gl.FRAGMENT_SHADER, loadShaderSource("scene"));
 let sceneProgram = new Program(gl, sceneVertexShader, sceneShader);
 let input = new InputSystem(canvas);
+
 let scene = new Scene(sceneProgram, input);
 let quad = new Quad(gl);
 let quad2 = new Quad(gl);
@@ -100,8 +88,15 @@ let camera = new Camera(
   0,                        // yaw = 0
   0                         // pitch = 0
 );
-
 scene.setCamera(camera);
+let player = new SplatPointerObject(canvas);
+scene.addObject(player);
+let offset = vec3.subtract(vec3.create(), camera.transform.position, player.transform.position);
+let followController = new FollowController(camera, player, offset);
+
+// fluid 面のワールド座標範囲をどこかで定義しておく
+
+
 let sceneFBO: FBO;
 function renderSceneToFBO() {
     // sceneFBO に向かって描く
@@ -344,6 +339,7 @@ function update (now:number) {
 
 let pointers: Pointer[] = [];
 pointers.push(new Pointer());
+pointers.push(player.pointer);
 let splatStack: number[] = [];
 function applyInputs(){
   if (splatStack.length > 0)
@@ -458,6 +454,8 @@ function sceneFlow(dt: number){
     camera.setAspect(sceneFBO.width / sceneFBO.height);
     input?.resetMouseDelta();
     input?.resetScroll();
+    //followController.update(dt);
+
     scene.update(dt);
     renderSceneToFBO();
 }
@@ -530,6 +528,7 @@ function fluidFlow(dt: number){
     physicsProgram.bind();
     bindObstacle(physicsProgram);
     locuVelocity = physicsProgram.uniforms.get("uVelocity");
+    let locAccel = physicsProgram.uniforms.get("uAccel");
     let locGravity  = physicsProgram.uniforms.get("uGravity");
     locDt       = physicsProgram.uniforms.get("dt");
     if (locuVelocity === undefined || locGravity === undefined || locDt === undefined) {
@@ -539,6 +538,13 @@ function fluidFlow(dt: number){
     // 下向き重力（座標系に合わせて符号は調整）:
     gl.uniform2f(locGravity, 0.0, -config.GRAVITY); 
     gl.uniform1f(locDt, dt);
+    if(camera.rigidBody){
+      if(! locAccel) throw new Error("physicsProgram が不正です.");
+      let coef = 10;
+      let fx = camera.rigidBody?.acceleration[0] * coef;
+      let fy = camera.rigidBody?.acceleration[1] * coef;
+      gl.uniform2f(locAccel, fx, fy);
+    }
 
     blit(velocity.write);
     velocity.swap();

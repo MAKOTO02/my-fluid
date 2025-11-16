@@ -1,0 +1,16 @@
+export const config = {
+    SIM_RESOLUTION: 256,
+    DYE_RESOLUTION: 1024,
+    DENSITY_DISSIPATION: 1,
+    VELOCITY_DISSIPATION: 0.2,
+    PRESSURE: 0.8,
+    PRESSURE_ITERATIONS: 20,
+    CURL: 30,
+    COLOR_UPDATE_SPEED: 10,
+    PAUSED: false,
+    SPLAT_RADIUS: 0.25,
+    SPLAT_FORCE: 5000,
+    TRANSPARENT: false,
+    BACK_COLOR: { r: 0, g: 0, b: 0 },
+    GRAVITY: 15,
+}
